@@ -35,6 +35,8 @@ func main() {
 		if err != nil {
 			if strings.Contains(err.Error(), "Block height out of range") {
 				fmt.Printf("Reach the last block, Finished! Collection %d block meeting the condition", total)
+
+				os.Exit(0)
 			}
 
 			panic(err)
