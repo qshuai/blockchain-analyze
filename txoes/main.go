@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -9,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/toorop/go-bitcoind"
 	"log"
 	"strconv"
 	"sync"
@@ -65,34 +68,55 @@ func main()  {
 	}
 
 	cache = make(map[string]*SpendOutpoint, mapSize)
-	client := initRPC()
 	start := time.Now()
 
 	blockChan := make(chan *Blocks, 20)
+	bc ,err := bitcoind.New("127.0.0.1", 8332, "root", "root", false)
 	go func() {
 		//for i := 0; i < 566970; i++ {
 		for i := 0; i < 300000; i++ {
 			if atomic.LoadUint32(&shutdown) != 0 {
+				fmt.Println("has requested shutdown")
 				close(blockChan)
 				return
 			}
 
-			blockHash ,err := client.GetBlockHash(int64(i))
+			blockHash ,err := bc.GetBlockHash(uint64(i))
 			if err != nil {
-				atomic.StoreUint32(&shutdown, 1)
+				fmt.Printf("get block hash failed: %s", err)
 				close(blockChan)
 				return
 			}
 
-			block ,err := client.GetBlock(blockHash)
+			rawBlock ,err := bc.GetRawBlock(blockHash)
 			if err != nil {
+				fmt.Printf("get block failed: %s", err)
+				close(blockChan)
+				return
+			}
+			var block wire.MsgBlock
+			blockBytes, err := hex.DecodeString(rawBlock)
+			if err != nil {
+				fmt.Printf("decode block failed: %s\n", err)
+				close(blockChan)
+				return
+			}
+			err = block.Deserialize(bytes.NewReader(blockBytes))
+			if err != nil {
+				fmt.Printf("deserialize block failed: %s\n", err)
+				close(blockChan)
+				return
+			}
+
+			if err != nil {
+				fmt.Printf("get block failed: %s\n", err)
 				atomic.StoreUint32(&shutdown, 1)
 				close(blockChan)
 				return
 			}
 
 			blockChan <- &Blocks{
-				block: block,
+				block: &block,
 				height: i,
 			}
 		}
@@ -305,11 +329,11 @@ func flush() {
 
 func initRPC() *rpcclient.Client {
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "127.0.0.1:8332",
-		User:         "KAuCgqk0gwgP9LWtDnu",
+		Host:         "127.0.0.1:9332",
+		User:         "okcoin",
 		//User:         "root",
 		//User:         "qQGq8VOZCwSe926W",
-		Pass:         "EGQFjJu81Ck3j7lFvU8cPW2jALopF",
+		Pass:         "lZWMxOThhODEyNDQyYTg0NjY",
 		//Pass: "root",
 		//Pass:         "cRRwsNVPcC4HUzxM88HYAliQ6GodFo1BuN6y9",
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
