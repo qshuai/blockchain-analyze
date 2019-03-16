@@ -2,21 +2,22 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"log"
-	"time"
 )
 
 var max int
 
 func main() {
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "127.0.0.1:9332",
-		User:         "okcoin",
-		Pass:         "lZWMxOThhODEyNDQyYTg0NjY",
+		Host:         "127.0.0.1:8332",
+		User:         "hello",
+		Pass:         "world",
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
