@@ -3,11 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/qshuai/tcolor"
+	"math/rand"
 	"os"
-	"strings"
 	"time"
+)
+
+var (
+	r *rand.Rand
 )
 
 func main() {
@@ -21,41 +26,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	source := rand.NewSource(time.Now().Unix())
+	r = rand.New(source)
+
 	rpc,err := getRPCinstance(*host, *user, *passwd)
 	if err != nil {
 		fmt.Println(tcolor.WithColor(tcolor.Red, "initial rpc connection failed"))
 		os.Exit(1)
 	}
 
-	var height int64
-	var prevTime time.Time
-	var total int
-	for {
-		hash ,err := rpc.GetBlockHash(height)
-		if err != nil {
-			if strings.Contains(err.Error(), "Block height out of range") {
-				fmt.Printf("Reach the last block, Finished! Collection %d block meeting the condition", total)
+	hash ,err := chainhash.NewHashFromStr("0000000000000000001cec15110040b1792c1f68a2d9d6cd1436ac2e3cbf21af")
+	if err != nil {
+		panic(err)
+	}
 
-				os.Exit(0)
+	block ,err := rpc.GetBlock(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, tx := range block.Transactions {
+		for idx, in := range tx.TxIn {
+			if len(in.SignatureScript) == 23 {
+				fmt.Printf("transaction: %s, in index: %d\n", tx.TxHash(), idx)
 			}
-
-			panic(err)
 		}
-
-		blockHeader, err := rpc.GetBlockHeader(hash)
-		if err != nil {
-			panic(err)
-		}
-
-		if prevTime.After(blockHeader.Timestamp) {
-			fmt.Printf("block: %s:%d with timestamp: %d less than the previous block timestamp: %d\n",
-				hash, height, blockHeader.Timestamp.Unix(), prevTime.Unix())
-
-			total++
-		}
-
-		prevTime = blockHeader.Timestamp
-		height++
 	}
 }
 
