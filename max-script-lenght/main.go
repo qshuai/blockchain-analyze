@@ -12,12 +12,13 @@ import (
 )
 
 var max int
+var nulldata int
 
 func main() {
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "127.0.0.1:8332",
-		User:         "hello",
-		Pass:         "world",
+		Host:         "127.0.0.1:9332",
+		User:         "okcoin",
+		Pass:         "lZWMxOThhODEyNDQyYTg0NjY",
 		HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
 		DisableTLS:   true, // Bitcoin core does not provide TLS by default
 	}
@@ -30,9 +31,10 @@ func main() {
 
 	blockChan := make(chan *wire.MsgBlock, 200)
 	go func() {
-		for i := 0; i < 567297; i++ {
+		for i := 230001; i < 567297; i++ {
 			if i%1000 == 0 {
-				fmt.Printf("%s Handle block height: %d, channel size: %d, max length: %d\n", time.Now().String(), i, len(blockChan), max)
+				fmt.Printf("%s Handle block height: %d, channel size: %d, max length: %d, nulldata: %d\n",
+					time.Now().String(), i, len(blockChan), max, nulldata)
 			}
 
 			blockhash, err := client.GetBlockHash(int64(i))
@@ -55,7 +57,13 @@ func main() {
 		for _, tx := range block.Transactions {
 			for idx, out := range tx.TxOut {
 				// null data
+				if len(out.PkScript) == 0 {
+					fmt.Printf("transaction output without pkScript, %s:%d\n", tx.TxHash(), idx)
+					continue
+				}
+
 				if out.PkScript[0] == 0x6a {
+					nulldata++
 					continue
 				}
 
@@ -79,5 +87,5 @@ func main() {
 	}
 
 	client.Shutdown()
-	fmt.Println("most length in pkScript(byte):", max)
+	fmt.Printf("most length in pkScript(byte): %d; nulldata output: %d", max, nulldata)
 }
