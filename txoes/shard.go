@@ -12,14 +12,13 @@ import (
 )
 
 const (
-	mod = 15
 
 	levelPath = "sdk/txos"
 )
 
 var (
 	db *leveldb.DB
-	dbs [mod]*leveldb.DB
+	dbTarget *leveldb.DB
 
 	roption = &opt.ReadOptions{DontFillCache:true}
 )
@@ -54,11 +53,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		// for the forth byte to decide which db to store
-		shardingDB := getDB(k[4])
 
 		value = generateValue(outpoint)
-		err = shardingDB.Put(k, value, nil)
+		err = dbTarget.Put(k, value, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -176,15 +173,6 @@ func decodeValue(value []byte) (*SpendOutpoint, error ) {
 	}, nil
 }
 
-func sharding(num byte) int {
-	return int(num) % mod
-}
-
-func getDB(num byte) *leveldb.DB {
-	n := sharding(num)
-	return dbs[n]
-}
-
 func init() {
 	var err error
 	db ,err = leveldb.OpenFile(levelPath, &opt.Options{
@@ -194,14 +182,10 @@ func init() {
 		panic(err)
 	}
 
-	for i := 0; i < mod; i++ {
-		shardDB ,err := leveldb.OpenFile(levelPath+strconv.Itoa(i), &opt.Options{
-			BlockCacheCapacity: 200 * opt.MiB,
-		})
-		if err != nil {
-			panic(err)
-		}
-
-		dbs[i] = shardDB
+	dbTarget ,err = leveldb.OpenFile(levelPath+"-target", &opt.Options{
+		BlockCacheCapacity: 500 * opt.MiB,
+	})
+	if err != nil {
+		panic(err)
 	}
 }
